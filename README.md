@@ -1,1 +1,1 @@
-# Business-project-in-bigdata-and-AI
+# Resume analyzer and job recommendations
