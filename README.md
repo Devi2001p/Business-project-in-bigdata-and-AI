@@ -1,1 +1,1 @@
-# Resume analyzer and job recommendations
+# Resume analyzer and job recommendation
