@@ -3,6 +3,11 @@ import base64
 from src.resume_parser import to_parse_the_resume
 from src.model import JobRecommender
 from src.preprocess import to_preprocess_and_to_evaluate
+st.cache_data.clear()
+
+@st.cache_data(show_spinner=False)
+def load_dataset(sample_limit):
+    return to_preprocess_and_to_evaluate(no_of_rows_max=sample_limit)
 
 # Code block to configure the page
 st.set_page_config(
@@ -123,7 +128,7 @@ if file_that_is_uploaded is not None:
         if not txt_in_the_resume.strip():
             st.error("❌ Text from the given file could not be extracted, Please upload a text-based PDF or DOCX.")
         else:
-            df_cleaned = to_preprocess_and_to_evaluate(no_of_rows_max=sample_limit)
+            df_cleaned = load_dataset(sample_limit)
             recommender = JobRecommender(df_cleaned, max_rows=sample_limit)
             results = recommender.recommend(txt_in_the_resume, top_k=top_k)
 
