@@ -11,6 +11,7 @@ import os
 from io import BytesIO
 import gzip
 from dotenv import load_dotenv
+import streamlit as st
 
 def load_env():
     if os.path.exists(".env"):
@@ -19,9 +20,9 @@ def load_env():
     elif hasattr(st, "secrets"):
         for key, value in st.secrets.items():
             os.environ[key] = str(value)
-        print("Environment loaded from Streamlit secrets")
+        print("Env loaded from Streamlit secrets")
     else:
-        print("No environment variables found!")
+        print(" No env variables found!")
 
 load_env()
 
