@@ -5,28 +5,25 @@ from src.resume_parser import to_parse_the_resume
 from src.model import JobRecommender
 from src.preprocess import to_preprocess_and_to_evaluate
 
-#  CACHE HANDLER 
-@st.cache_data(show_spinner=False)
-def load_dataset(sample_limit):
-    """Cached data loader to preprocess job dataset."""
-    return to_preprocess_and_to_evaluate(no_of_rows_max=sample_limit)
-
-
-#  PAGE CONFIG 
 st.set_page_config(
     page_title="AI Resume Analyzer & Job Recommender",
     page_icon="🏢",
     layout="wide",
 )
 
+@st.cache_data(show_spinner=False)
+def load_dataset(sample_limit):
+    """Cached preprocessing of dataset for job recommendations"""
+    return to_preprocess_and_to_evaluate(no_of_rows_max=sample_limit)
 
-#  BACKGROUND IMAGE 
+
 def to_get_img_base64(path_of_the_img):
+    """Convert image to base64 for inline background rendering"""
     try:
         with open(path_of_the_img, "rb") as img_file:
             return base64.b64encode(img_file.read()).decode()
     except FileNotFoundError:
-        # Silently skip if image not found
+        st.warning("⚠️ Background image not found. Using default gradient.")
         return None
 
 
@@ -109,103 +106,103 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-
-#  HEADER 
 st.title("🏢 AI Resume Analyzer & Job Recommender")
 st.markdown("""
-Discover job roles that best fit your **skills**, **experience**, and **career goals**
+Discover job roles that best fit your **skills**, **experience**, and **career goals** — powered by AI.
 """)
 
-
-#  SIDEBAR 
 st.sidebar.header("⚙️ Configuration")
 sample_limit = st.sidebar.slider("📊 Dataset size (rows)", 200, 2000, 800, step=100)
 top_k = st.sidebar.slider("🎯 Number of job recommendations", 3, 10, 5)
 st.sidebar.markdown("---")
-st.sidebar.info("💡 Increase dataset size for broader results (might be slower than the default size).")
+st.sidebar.info("💡 Increase dataset size for broader and deeper recommendations.")
 
-
-#  MAIN LOGIC 
 file_that_is_uploaded = st.file_uploader("📄 Upload your Resume", type=["pdf", "docx", "txt"])
 
 if file_that_is_uploaded is not None:
-    try:
-        temp_path = f"data/{file_that_is_uploaded.name}"
-        with open(temp_path, "wb") as f:
-            f.write(file_that_is_uploaded.read())
+    with st.spinner("🔍 Your resume is being analyzed... please wait..."):
+        try:
+            # Save uploaded resume
+            temp_path = f"data/{file_that_is_uploaded.name}"
+            with open(temp_path, "wb") as f:
+                f.write(file_that_is_uploaded.read())
 
-        txt_in_the_resume = to_parse_the_resume(temp_path)
+            # Extract text
+            txt_in_the_resume = to_parse_the_resume(temp_path)
 
-        if not txt_in_the_resume.strip():
-            st.error("❌ Could not extract text. Please upload a text-based PDF or DOCX.")
-        else:
-            df_cleaned = load_dataset(sample_limit)
-            recommender = JobRecommender(df_cleaned, max_rows=sample_limit)
-            results = recommender.recommend(txt_in_the_resume, top_k=top_k)
-
-            if not results.empty:
-                st.success("🤝 Resume analyzed successfully!")
+            if not txt_in_the_resume.strip():
+                st.error("❌ Could not extract text. Please upload a text-based PDF or DOCX.")
             else:
-                st.warning("⚠️ No strong job matches found. Try increasing dataset size.")
+                # Preprocess and recommend
+                df_cleaned = load_dataset(sample_limit)
+                recommender = JobRecommender(df_cleaned, max_rows=sample_limit)
+                results = recommender.recommend(txt_in_the_resume, top_k=top_k)
 
-            tab1, tab2, tab3 = st.tabs(
-                ["📄 Preview of the Resume", "🎯 Job Recommendations", "💡 Career Insights"]
-            )
-
-            # Tab 1 - Resume Text
-            with tab1:
-                st.subheader("📄 Preview of the Resume")
-                st.write(txt_in_the_resume[:2000] + ("..." if len(txt_in_the_resume) > 2000 else ""))
-
-            # Tab 2 - Job Recommendations
-            with tab2:
+                # Display results
                 if not results.empty:
-                    st.subheader("🎯 Top Job Recommendations")
-                    for _, row in results.iterrows():
-                        title = row.get("JobTitle", "N/A")
-                        company = row.get("Company Name", "Not Specified")
-                        contact = row.get("Contact Person", "Not Provided")
-                        skills = row.get("Skills", "Not Mentioned")
-                        portal = row.get("Job Portal", "Not Specified")
-                        score = row.get("similarity", 0.0)
-
-                        if len(skills.split()) > 25:
-                            skills = " ".join(skills.split()[:25]) + "..."
-
-                        st.markdown(
-                            f"""
-                            <div class="card">
-                                <h4>🏢 {title}</h4>
-                                <p><b>📊 Match Score:</b> {score:.2f}%</p>
-                                <p><b>🏢 Company:</b> {company}</p>
-                                <p><b>👤 Contact:</b> {contact}</p>
-                                <p><b>🧠 Skills:</b> {skills}</p>
-                                <p><b>🌐 Job Portal:</b> {portal}</p>
-                            </div>
-                            """,
-                            unsafe_allow_html=True,
-                        )
+                    st.success("🤝 Resume analyzed successfully!")
                 else:
-                    st.warning("❌ No matching jobs found.")
+                    st.warning("⚠️ Resume parsed, but no strong matches found. Try expanding dataset size.")
 
-            # Tab 3 - Resume Tips
-            with tab3:
-                st.subheader("🛠 Suggestions to Improve Resume")
-                for s in recommender.improvements_suggested(txt_in_the_resume, results):
-                    st.markdown(f"- {s}")
+                # Tabs
+                tab1, tab2, tab3 = st.tabs([
+                    "📄 Resume Preview",
+                    "🎯 Job Recommendations",
+                    "💡 Career Insights"
+                ])
 
-                st.subheader("💬 Preparation Tips for the Interview")
-                for t in recommender.tips_for_the_interview(results):
-                    st.markdown(f"- {t}")
+                # TAB 1: Resume Preview
+                with tab1:
+                    st.subheader("📄 Resume Preview")
+                    st.write(txt_in_the_resume[:2000] + ("..." if len(txt_in_the_resume) > 2000 else ""))
 
-    except Exception:
-        st.error("🚨 An unexpected error occurred while processing your resume.")
-        st.code(traceback.format_exc())
+                # TAB 2: Job Recommendations
+                with tab2:
+                    if not results.empty:
+                        st.subheader("🎯 Top Job Recommendations")
+                        for _, row in results.iterrows():
+                            title = row.get("JobTitle", "N/A")
+                            company = row.get("Company Name", "Not Specified")
+                            contact = row.get("Contact Person", "Not Provided")
+                            skills = row.get("Skills", "Not Mentioned")
+                            portal = row.get("Job Portal", "Not Specified")
+                            score = row.get("similarity", 0.0)
+
+                            if len(skills.split()) > 25:
+                                skills = " ".join(skills.split()[:25]) + "..."
+
+                            st.markdown(
+                                f"""
+                                <div class="card">
+                                    <h4>🏢 {title}</h4>
+                                    <p><b>📊 Match Score:</b> {score:.2f}%</p>
+                                    <p><b>🏢 Company:</b> {company}</p>
+                                    <p><b>👤 Contact:</b> {contact}</p>
+                                    <p><b>🧠 Skills:</b> {skills}</p>
+                                    <p><b>🌐 Job Portal:</b> {portal}</p>
+                                </div>
+                                """,
+                                unsafe_allow_html=True,
+                            )
+                    else:
+                        st.warning("❌ No matching jobs found.")
+
+                # TAB 3: Career Insights
+                with tab3:
+                    st.subheader("🛠 Resume Improvement Suggestions")
+                    for s in recommender.improvements_suggested(txt_in_the_resume, results):
+                        st.markdown(f"- {s}")
+
+                    st.subheader("💬 Interview Preparation Tips")
+                    for t in recommender.tips_for_the_interview(results):
+                        st.markdown(f"- {t}")
+
+        except Exception:
+            st.error("🚨 An unexpected error occurred while processing your resume.")
+            st.code(traceback.format_exc())
 else:
-    st.info("↗️ Upload your resume to start the analysis.")
+    st.info("↗️ Upload your resume to begin the analysis.")
 
-
-#  FOOTER 
 st.markdown(
     """
     <hr><center>
