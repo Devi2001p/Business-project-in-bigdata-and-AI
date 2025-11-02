@@ -25,7 +25,6 @@ __pycache__/
 data/*.pdf
 data/*.docx
 data/*.txt
-data/bgapp.JPG
 data/job_descriptions.csv
 
 # OS Files
