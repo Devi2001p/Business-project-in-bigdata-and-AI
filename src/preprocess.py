@@ -12,12 +12,15 @@ from io import BytesIO
 import gzip
 from dotenv import load_dotenv
 
-load_dotenv()
+env_path = os.path.join(os.getcwd(), ".env")
+print(f"🔍 Looking for .env file at: {env_path}")
+load_dotenv(env_path)
+print("✅ .env loaded!")
 
 def load_dataset_from_s3():
 
     bucket = os.getenv("S3_BUCKET_NAME")
-    key = os.getenv("S3_FILE_PATH")
+    key = os.getenv("S3_OBJECT_KEY")
 
     if not bucket or not key:
         raise ValueError("❌ s3 bucket name or path is missing")
