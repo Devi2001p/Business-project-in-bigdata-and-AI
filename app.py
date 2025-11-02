@@ -1,9 +1,14 @@
-import streamlit as st
+import os
 import base64
 import traceback
+import streamlit as st
+
 from src.resume_parser import to_parse_the_resume
 from src.model import JobRecommender
 from src.preprocess import to_preprocess_and_to_evaluate
+
+
+# Streamlit page config
 
 st.set_page_config(
     page_title="AI Resume Analyzer & Job Recommender",
@@ -11,32 +16,24 @@ st.set_page_config(
     layout="wide",
 )
 
-@st.cache_data(show_spinner=False)
-def load_dataset(sample_limit):
-    """Cached preprocessing of dataset for job recommendations"""
-    return to_preprocess_and_to_evaluate(no_of_rows_max=sample_limit)
 
+# Helpers / styling
 
-def to_get_img_base64(path_of_the_img):
-    """Convert image to base64 for inline background rendering"""
+def to_get_img_base64(path_of_the_img: str):
     try:
         with open(path_of_the_img, "rb") as img_file:
             return base64.b64encode(img_file.read()).decode()
     except FileNotFoundError:
-        st.warning("⚠️ Background image not found. Using default gradient.")
+        # Don’t hard-fail the UI because of a missing background image
         return None
 
-
-path_of_the_img = "data/bgapp.JPG"
-img_base64 = to_get_img_base64(path_of_the_img)
-
+bg_b64 = to_get_img_base64("data/bgapp.JPG")
 style_of_the_background = (
     f"""
     background: linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)),
-                url("data:image/jpg;base64,{img_base64}");
+                url("data:image/jpg;base64,{bg_b64}");
     """
-    if img_base64
-    else "background: linear-gradient(180deg, #1e293b, #0f172a);"
+    if bg_b64 else "background: linear-gradient(180deg, #1e293b, #0f172a);"
 )
 
 st.markdown(
@@ -50,66 +47,36 @@ st.markdown(
         color: #f1f5f9;
         font-family: 'Segoe UI', sans-serif;
     }}
-    [data-testid="stSidebar"] {{
-        background: rgba(20, 20, 20, 0.88);
-    }}
-    [data-testid="stSidebar"] * {{
-        color: #ffffff !important;
-    }}
+    [data-testid="stSidebar"] {{ background: rgba(20, 20, 20, 0.88); }}
+    [data-testid="stSidebar"] * {{ color: #ffffff !important; }}
+
     .card {{
-        background: rgba(255, 255, 255, 0.12);
-        padding: 1.4rem 1.6rem;
-        margin-bottom: 1rem;
-        border-radius: 16px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        backdrop-filter: blur(8px);
-        color: #ffffff;
-        transition: all 0.2s ease;
+        background: rgba(255,255,255,0.12);
+        padding: 1.4rem 1.6rem; margin-bottom: 1rem;
+        border-radius: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        backdrop-filter: blur(8px); color: #ffffff; transition: all .2s ease;
     }}
-    .card:hover {{
-        transform: scale(1.02);
-        box-shadow: 0 6px 18px rgba(0,0,0,0.5);
-    }}
-    h1, h2, h3, h4 {{
-        color: #f8fafc;
-    }}
-    p, small {{
-        color: #e2e8f0;
-    }}
+    .card:hover {{ transform: scale(1.02); box-shadow: 0 6px 18px rgba(0,0,0,0.5); }}
+
     [data-testid="stFileUploader"] {{
-        background-color: rgba(255, 255, 255, 0.95);
-        border-radius: 12px;
-        padding: 0.5rem;
-        color: #111827 !important;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        background-color: rgba(255,255,255,0.95); border-radius: 12px; padding: .5rem;
+        color: #111827 !important; box-shadow: 0 2px 10px rgba(0,0,0,0.3);
     }}
-    [data-testid="stFileUploader"] label,
-    [data-testid="stFileUploader"] * {{
-        color: #111827 !important;
-    }}
+    [data-testid="stFileUploader"] * {{ color: #111827 !important; }}
     [data-testid="stFileUploader"] div[role="button"] {{
-        background-color: #f8fafc !important;
-        border: 1px solid #cbd5e1 !important;
-        color: #111827 !important;
+        background-color: #f8fafc !important; border: 1px solid #cbd5e1 !important; color: #111827 !important;
     }}
-    [data-testid="stFileUploader"] div[role="button"]:hover {{
-        background-color: #e2e8f0 !important;
-        color: #111827 !important;
-    }}
-    [data-testid="stFileUploader"] a,
-    [data-testid="stFileUploader"] span {{
-        color: #111827 !important;
-        font-weight: 500;
-    }}
+    [data-testid="stFileUploader"] div[role="button"]:hover {{ background-color: #e2e8f0 !important; }}
     </style>
     """,
     unsafe_allow_html=True,
 )
 
+
+# Title / sidebar
+
 st.title("🏢 AI Resume Analyzer & Job Recommender")
-st.markdown("""
-Discover job roles that best fit your **skills**, **experience**, and **career goals** — powered by AI.
-""")
+st.markdown("Discover job roles that best fit your **skills**, **experience**, and **career goals**.")
 
 st.sidebar.header("⚙️ Configuration")
 sample_limit = st.sidebar.slider("📊 Dataset size (rows)", 200, 2000, 800, step=100)
@@ -117,91 +84,138 @@ top_k = st.sidebar.slider("🎯 Number of job recommendations", 3, 10, 5)
 st.sidebar.markdown("---")
 st.sidebar.info("💡 Increase dataset size for broader and deeper recommendations.")
 
+
+# Cache the dataset load (no spinner text here)
+
+@st.cache_data(show_spinner=False)
+def load_dataset_cached(limit: int):
+    return to_preprocess_and_to_evaluate(no_of_rows_max=limit)
+
+
+# File upload
+
 file_that_is_uploaded = st.file_uploader("📄 Upload your Resume", type=["pdf", "docx", "txt"])
+
+# Simple debug accordion (expand only if needed)
+with st.expander("🐞 Debug details (expand if something breaks)"):
+    st.write("`sample_limit` =", sample_limit, "| `top_k` =", top_k)
+    st.write("ENV present:", {k: bool(os.getenv(k)) for k in ["S3_BUCKET_NAME", "S3_OBJECT_KEY", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"]})
+
+
+# Main logic
 
 if file_that_is_uploaded is not None:
     with st.spinner("🔍 Your resume is being analyzed... please wait..."):
         try:
-            # Save uploaded resume
-            temp_path = f"data/{file_that_is_uploaded.name}"
-            with open(temp_path, "wb") as f:
-                f.write(file_that_is_uploaded.read())
+            # 1) Ensure data folder exists (common crash if missing)
+            try:
+                os.makedirs("data", exist_ok=True)
+            except Exception:
+                st.error("❌ Could not create data folder to save your upload.")
+                st.code(traceback.format_exc())
+                st.stop()
 
-            # Extract text
-            txt_in_the_resume = to_parse_the_resume(temp_path)
+            # 2) Save the uploaded file
+            try:
+                temp_path = os.path.join("data", file_that_is_uploaded.name)
+                with open(temp_path, "wb") as f:
+                    f.write(file_that_is_uploaded.read())
+            except Exception:
+                st.error("❌ Failed to save the uploaded file.")
+                st.code(traceback.format_exc())
+                st.stop()
 
-            if not txt_in_the_resume.strip():
-                st.error("❌ Could not extract text. Please upload a text-based PDF or DOCX.")
-            else:
-                # Preprocess and recommend
-                df_cleaned = load_dataset(sample_limit)
+            # 3) Extract text from resume
+            try:
+                txt_in_the_resume = to_parse_the_resume(temp_path)
+                if not txt_in_the_resume or not txt_in_the_resume.strip():
+                    st.error("❌ Could not extract text. Please upload a text-based PDF or DOCX.")
+                    st.stop()
+            except Exception:
+                st.error("❌ Failed while parsing the resume file.")
+                st.code(traceback.format_exc())
+                st.stop()
+
+            # 4) Load dataset
+            try:
+                df_cleaned = load_dataset_cached(sample_limit)
+                if df_cleaned is None or getattr(df_cleaned, "empty", False):
+                    st.error("❌ Dataset could not be loaded. Check S3 credentials or the local CSV path.")
+                    st.info("Tip: Set S3_BUCKET_NAME & S3_OBJECT_KEY in secrets, or include data/job_descriptions.csv in the repo.")
+                    st.stop()
+            except Exception:
+                st.error("❌ Failed while loading/preprocessing the dataset.")
+                st.code(traceback.format_exc())
+                st.stop()
+
+            # 5) Build recommender and compute results
+            try:
                 recommender = JobRecommender(df_cleaned, max_rows=sample_limit)
                 results = recommender.recommend(txt_in_the_resume, top_k=top_k)
+            except Exception:
+                st.error("❌ Failed while generating recommendations.")
+                st.code(traceback.format_exc())
+                st.stop()
 
-                # Display results
-                if not results.empty:
-                    st.success("🤝 Resume analyzed successfully!")
+            # 6) Display
+            if results is not None and not results.empty:
+                st.success("🤝 Resume analyzed successfully!")
+            else:
+                st.warning("⚠️ Resume parsed, but no strong matches found. Try expanding dataset size.")
+
+            tab1, tab2, tab3 = st.tabs(["📄 Resume Preview", "🎯 Job Recommendations", "💡 Career Insights"])
+
+            with tab1:
+                st.subheader("📄 Resume Preview")
+                st.write(txt_in_the_resume[:2000] + ("..." if len(txt_in_the_resume) > 2000 else ""))
+
+            with tab2:
+                if results is not None and not results.empty:
+                    st.subheader("🎯 Top Job Recommendations")
+                    for _, row in results.iterrows():
+                        title = row.get("JobTitle", "N/A")
+                        company = row.get("Company Name", "Not Specified")
+                        contact = row.get("Contact Person", "Not Provided")
+                        skills = row.get("Skills", "Not Mentioned")
+                        portal = row.get("Job Portal", "Not Specified")
+                        score = row.get("similarity", 0.0)
+
+                        if isinstance(skills, str) and len(skills.split()) > 25:
+                            skills = " ".join(skills.split()[:25]) + "..."
+
+                        st.markdown(
+                            f"""
+                            <div class="card">
+                                <h4>🏢 {title}</h4>
+                                <p><b>📊 Match Score:</b> {score:.2f}%</p>
+                                <p><b>🏢 Company:</b> {company}</p>
+                                <p><b>👤 Contact:</b> {contact}</p>
+                                <p><b>🧠 Skills:</b> {skills}</p>
+                                <p><b>🌐 Job Portal:</b> {portal}</p>
+                            </div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
                 else:
-                    st.warning("⚠️ Resume parsed, but no strong matches found. Try expanding dataset size.")
+                    st.warning("❌ No matching jobs found.")
 
-                # Tabs
-                tab1, tab2, tab3 = st.tabs([
-                    "📄 Resume Preview",
-                    "🎯 Job Recommendations",
-                    "💡 Career Insights"
-                ])
+            with tab3:
+                st.subheader("🛠 Resume Improvement Suggestions")
+                for s in recommender.improvements_suggested(txt_in_the_resume, results):
+                    st.markdown(f"- {s}")
 
-                # TAB 1: Resume Preview
-                with tab1:
-                    st.subheader("📄 Resume Preview")
-                    st.write(txt_in_the_resume[:2000] + ("..." if len(txt_in_the_resume) > 2000 else ""))
-
-                # TAB 2: Job Recommendations
-                with tab2:
-                    if not results.empty:
-                        st.subheader("🎯 Top Job Recommendations")
-                        for _, row in results.iterrows():
-                            title = row.get("JobTitle", "N/A")
-                            company = row.get("Company Name", "Not Specified")
-                            contact = row.get("Contact Person", "Not Provided")
-                            skills = row.get("Skills", "Not Mentioned")
-                            portal = row.get("Job Portal", "Not Specified")
-                            score = row.get("similarity", 0.0)
-
-                            if len(skills.split()) > 25:
-                                skills = " ".join(skills.split()[:25]) + "..."
-
-                            st.markdown(
-                                f"""
-                                <div class="card">
-                                    <h4>🏢 {title}</h4>
-                                    <p><b>📊 Match Score:</b> {score:.2f}%</p>
-                                    <p><b>🏢 Company:</b> {company}</p>
-                                    <p><b>👤 Contact:</b> {contact}</p>
-                                    <p><b>🧠 Skills:</b> {skills}</p>
-                                    <p><b>🌐 Job Portal:</b> {portal}</p>
-                                </div>
-                                """,
-                                unsafe_allow_html=True,
-                            )
-                    else:
-                        st.warning("❌ No matching jobs found.")
-
-                # TAB 3: Career Insights
-                with tab3:
-                    st.subheader("🛠 Resume Improvement Suggestions")
-                    for s in recommender.improvements_suggested(txt_in_the_resume, results):
-                        st.markdown(f"- {s}")
-
-                    st.subheader("💬 Interview Preparation Tips")
-                    for t in recommender.tips_for_the_interview(results):
-                        st.markdown(f"- {t}")
+                st.subheader("💬 Interview Preparation Tips")
+                for t in recommender.tips_for_the_interview(results):
+                    st.markdown(f"- {t}")
 
         except Exception:
-            st.error("🚨 An unexpected error occurred while processing your resume.")
+            # Last-resort catch
+            st.error("🚨 An unexpected error occurred.")
             st.code(traceback.format_exc())
 else:
     st.info("↗️ Upload your resume to begin the analysis.")
+
+# Footer
 
 st.markdown(
     """

@@ -136,32 +136,7 @@ def to_preprocess_and_to_evaluate(csv_path: str = "data/job_descriptions.csv", n
    
     # Evaluating the model to test accuracy
 
-    print("\nevaluating the accuracy of the model")
-    jr = JobRecommender(df, max_rows=no_of_rows_max)
-
-    resumes_to_test = [
-        ("qa", "QA engineer skilled in Selenium, automation testing, and API validation."),
-        ("finance", "Financial analyst experienced in audits, budgeting, and Excel dashboards."),
-        ("software", "Software developer with skills in Python, React, and API development."),
-        ("data", "Data analyst skilled in SQL, Power BI, and data visualization."),
-        ("marketing", "Digital marketer experienced in SEO, content strategy, and Google Ads."),
-        ("hr", "HR manager with experience in recruitment and payroll systems."),
-    ]
-
-    correct = 0
-    for true_cat, resume_text in resumes_to_test:
-        pred_cat = to_detect_the_category_of_resume(resume_text) or "other"
-        results = jr.recommend(resume_text, top_k=3)
-        print(f"\ncategory of resume: {true_cat}")
-        print(f"category of predictions: {pred_cat}")
-        print("Jobs that are recommended on top", results["JobTitle"].head(3).tolist())
-        if pred_cat == true_cat:
-            correct += 1
-
-    accuracy = round((correct / len(resumes_to_test)) * 100, 2)
-    print(f"\n Accuracy of model (matching category): {accuracy}%")
-    print("-")
-    print(" preprocessing and evaluation done...")
+    print("✅ Preprocessing completed successfully.")
     return df
 
 if __name__ == "__main__":
