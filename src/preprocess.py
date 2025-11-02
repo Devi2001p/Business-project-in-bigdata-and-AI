@@ -12,10 +12,18 @@ from io import BytesIO
 import gzip
 from dotenv import load_dotenv
 
-env_path = os.path.join(os.getcwd(), ".env")
-print(f"🔍 Looking for .env file at: {env_path}")
-load_dotenv(env_path)
-print("✅ .env loaded!")
+def load_env():
+    if os.path.exists(".env"):
+        load_dotenv()
+        print(".env loaded locally")
+    elif hasattr(st, "secrets"):
+        for key, value in st.secrets.items():
+            os.environ[key] = str(value)
+        print("Loaded environment from Streamlit secrets")
+    else:
+        print("❌No environment variables found")
+
+load_env()
 
 def load_dataset_from_s3():
 
