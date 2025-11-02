@@ -123,7 +123,7 @@ if file_that_is_uploaded is not None:
         if not txt_in_the_resume.strip():
             st.error("❌ Text from the given file could not be extracted, Please upload a text-based PDF or DOCX.")
         else:
-            df_cleaned = to_preprocess_and_to_evaluate("data/job_descriptions.csv", no_of_rows_max=sample_limit)
+            df_cleaned = to_preprocess_and_to_evaluate(no_of_rows_max=sample_limit)
             recommender = JobRecommender(df_cleaned, max_rows=sample_limit)
             results = recommender.recommend(txt_in_the_resume, top_k=top_k)
 
