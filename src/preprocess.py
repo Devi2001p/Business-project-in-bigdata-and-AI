@@ -5,7 +5,39 @@ Performs dataset cleaning, exploratory data analysis (EDA), and evaluates recomm
 
 import pandas as pd
 import re
+import boto3
+import pandas as pd
+import os
+from io import BytesIO
+import gzip
+from dotenv import load_dotenv
 
+load_dotenv()
+
+def load_dataset_from_s3():
+
+    bucket = os.getenv("S3_BUCKET_NAME")
+    key = os.getenv("S3_FILE_PATH")
+
+    if not bucket or not key:
+        raise ValueError("❌ s3 bucket name or path is missing")
+
+    print(f"dataset is loading from s3 bucket: {bucket}/{key}")
+    s3 = boto3.client(
+        "s3",
+        aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+        aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY")
+    )
+
+    obj = s3.get_object(Bucket=bucket, Key=key)
+    if key.endswith(".gz"):
+        with gzip.GzipFile(fileobj=BytesIO(obj["Body"].read())) as gz:
+            df = pd.read_csv(gz, low_memory=False)
+    else:
+        df = pd.read_csv(BytesIO(obj["Body"].read()), low_memory=False)
+
+    print(f" successful loading of dataset from s3 is done — {len(df)} rows, {len(df.columns)} columns")
+    return df
 # This function is used in cleaning the text which removes symbols that are unwanted, spaces etc..
 
 def text_that_is_cleaned(text: str) -> str:
@@ -19,9 +51,19 @@ def text_that_is_cleaned(text: str) -> str:
 
 def to_preprocess_and_to_evaluate(csv_path: str = "data/job_descriptions.csv", no_of_rows_max: int = 2000):
     from src.model import JobRecommender, to_detect_the_category_of_resume
-    print(f"The dataset is loading from: {csv_path}")
-    df = pd.read_csv(csv_path, low_memory=False)
-    print(f"the dataset is loaded with {len(df)} rows & {len(df.columns)} columns")
+
+    #  Here the dataset is loading from s3 bucket
+    try:
+      if os.getenv("S3_BUCKET_NAME"):
+        df = load_dataset_from_s3()
+      else:
+        print(f"The dataset is loading from: {csv_path}")
+        df = pd.read_csv(csv_path, low_memory=False)
+        print(f"The dataset is loaded with {len(df)} rows & {len(df.columns)} columns")
+    except FileNotFoundError:
+        print("❌ The dataset was not found in either of the paths, please check again.")
+        return None
+
     # no of rows are limited for performance
     if len(df) > no_of_rows_max:
         df = df.sample(no_of_rows_max, random_state=42).reset_index(drop=True)
@@ -106,7 +148,7 @@ def to_preprocess_and_to_evaluate(csv_path: str = "data/job_descriptions.csv", n
 
     accuracy = round((correct / len(resumes_to_test)) * 100, 2)
     print(f"\n Accuracy of model (matching category): {accuracy}%")
-    print("----------------------------------------------")
+    print("-")
     print(" preprocessing and evaluation done...")
     return df
 
