@@ -111,7 +111,7 @@ st.sidebar.info("💡 Increase dataset size for broader results (might be slower
 # To get the user input file
 file_that_is_uploaded = st.file_uploader("📄 Upload your Resume", type=["pdf", "docx", "txt"])
 
-# MAIN CONTENT
+# Body of the page
 if file_that_is_uploaded is not None:
     with st.spinner("🔍 Your resume is getting analyzed... please wait..."):
         temp_path = f"data/{file_that_is_uploaded.name}"

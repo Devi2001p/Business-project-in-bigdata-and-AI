@@ -168,16 +168,3 @@ class JobRecommender:
         if any(x in title_blob for x in ["software", "developer", "engineer"]):
             return ["Revise DSA", "Discuss design patterns", "Highlight debugging experience"]
         return ["Be confident", "Research the company", "Show measurable impact in your answers"]
-
-
-
-'''# CLI Test (optional standalone run)
-
-if __name__ == "__main__":
-    print("🔍 Testing model integration with preprocess...")
-    from src.preprocess import to_preprocess_and_to_evaluate
-
-    df_cleaned = to_preprocess_and_to_evaluate()  # Run preprocessing
-    jr = JobRecommender(df_cleaned, max_rows=1000)
-    resume = "Software engineer skilled in Python, React, and APIs."
-    print(jr.recommend(resume))'''
