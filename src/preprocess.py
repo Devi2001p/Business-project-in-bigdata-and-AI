@@ -19,9 +19,9 @@ def load_env():
     elif hasattr(st, "secrets"):
         for key, value in st.secrets.items():
             os.environ[key] = str(value)
-        print("Loaded environment from Streamlit secrets")
+        print("Environment loaded from Streamlit secrets")
     else:
-        print("❌No environment variables found")
+        print("No environment variables found!")
 
 load_env()
 
